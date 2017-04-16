@@ -1,0 +1,666 @@
+Learning in Complex Systems Spring 2011
+Lecture Notes Nahum Shimkin
+4 Reinforcement Learning – Basic Algorithms
+4.1 Introduction
+RL methods essentially deal with the solution of (optimal) control problems using on-line
+measurements. We consider an agent who interacts with a dynamic environment, according
+to the following diagram:
+.
+✛
+✛
+✲
+Agent Environment
+Action
+State
+Reward
+Our agent usually has only partial knowledge of its environment, and therefore will use
+some form of learning scheme, based on the observed signals. To start with, the agent
+needs to use some parametric model of the environment. We shall use the model of a
+stationary MDP, with given state space and actions space. However, the state transition
+matrix P = (p(s
+0
+|s, a)) and the immediate reward function r = (r(s, a, s0
+)) may not be
+given. We shall further assume the the observed signal is indeed the state of the dynamic
+proceed (fully observed MDP), and that the reward signal is the immediate reward rt
+, with
+mean r(st
+, at).
+It should be realized that this is an idealized model of the environment, which is used by the
+agent for decision making. In reality, the environment may be non-stationary, the actual
+state may not be fully observed (or not even be well defined), the state and action spaces
+may be discretized, and the environment may contain other (possibly learning) decision
+1
+makers who are not stationary. Good learning schemes should be designed with an eye
+towards robustness to these modelling approximations.
+Learning Approaches: The main approaches for learning in this context can be classified as
+follows:
+• Indirect Learning: Estimate an explicit model of the environment (Pˆ and ˆr in our
+case), and compute an optimal policy for the estimated model (“Certainty Equivalence”).
+• Direct Learning: The optimal control policy is learned without first learning an explicit
+model. Such schemes include:
+a. Search in policy space: Genetic Algorithms, Policy Gradient....
+b. Value-function based learning, related to Dynamic Programming principles: Temporal
+Difference (TD) learning, Q-learning, etc.
+RL initially referred to the latter (value-based) methods, although today the name applies
+more broadly. Our focus in the chapter will be on this class of algorithms.
+2
+Within the class of value-function based schemes, we can distinguish two major classes of
+RL methods.
+1. Policy-Iteration based schemes (“actor-critic” learning):
+policy improvement "actor"
+"critic" policy evaluation
+{V(x)}
+control
+policy
+learning
+feedback
+environment
+The “policy evaluation” block essentially computes the value function under the current
+policy (assuming a fixed, stationary policy). Methods for policy evaluation include:
+a. “Monte Carlo” policy evaluation.
+b. Temporal Difference methods - TD(λ), SARSA, etc.
+The “actor” block performs some form of policy improvement, based on the policy iteration
+idea: ¯π ∈ argmax{r + pV }. In addition, it is responsible for implementing some
+“exploration” process.
+2. Value-Iteration based Schemes:
+These schemes are based on some on-line version of the value-iteration recursions: V
+∗
+t+1 =
+maxπ[r
+π + P
+πV
+∗
+t
+]. The basic learning algorithm in this class is Q-learning.
+3
+4.2 Example: Deterministic Q-Learning
+To demonstrate some key ideas, we start with a simplified learning algorithm that is suitable
+for a deterministic MDP model, namely:
+st+1 = f(st
+, at)
+rt = r(st
+, at)
+We consider the discounted return criterion:
+V
+π
+(s) = X∞
+t=0
+γ
+t
+r(st
+, at), given s0 = s, at = π(st)
+V
+∗
+(s) = max
+π
+V
+π
+(s)
+Recall our definition of the Q-function (or state-action value function), specialized to the
+present deterministic setting:
+Q(s, a) = r(s, a) + γV ∗
+(f(s, a))
+The optimality equation is then
+V
+∗
+(s) = max
+a
+Q(s, a)
+or, in terms of Q only:
+Q(s, a) = r(s, a) + γ max
+a
+0
+Q(f(s, a), a0
+)
+Our learning algorithm runs as follows:
+• Iniialize: Set Qˆ(s, a) = Q0(s, a), for all s, a.
+• At each stage n = 0, 1, . . . :
+– Observe sn, an, rn, sn+1.
+– Update Qˆ(sn, an): Qˆ(sn, an) := rn + γ maxa
+0 Qˆ(sn+1, a0
+)
+We note that this algorithm does not tell us how to choose the actions an. The following
+result is from [Mitchell, Theorem 3.1].
+4
+Theorem 1 (Convergence of Q-learning for deterministic MDPS)
+Assume a deterministic MDP model. Let Qˆ
+n(s, a) denote the estimated Q-function before
+the n-th update. If each state-action pair is visited infinitely-often, then limn→∞ Qˆ
+n(s, a) =
+Q(s, a), for all (s, a).
+Proof: Let
+∆n , kQˆ
+n − Qk∞ = max
+s,a
+|Qˆ
+n(s, a) − Q(s, a)| .
+Then at every stage n:
+|Qˆ
+n+1(sn, an) − Q(sn, an)| = |rn + γ max
+a
+0
+Qˆ
+n(sn+1, a0
+) − (rn + γ max
+a
+00
+Q(sn+1, a00))|
+= γ| max
+a
+0
+Qˆ
+n(sn+1, a0
+) − max
+a
+00
+Qˆ
+n(sn+1, a00)|
+≤ γ max
+a
+0
+|Qˆ
+n(sn+1, a0
+) − Qn(sn+1, a0
+)| ≤ γ∆n .
+Consider now some interval [n1, n2] over which all state-action pairs (s, a) appear at least
+once. Using the above relation and simple induction, it follows that ∆n2 ≤ γ∆n1
+. Since
+γ < 1 and since there is an infinite number of such intervals by assumption, it follows that
+∆n → 0.
+Remarks:
+1. The algorithm allows the use of an arbitrary policy to be used during learning. Such
+as algorithm is called Off Policy. In contrast, On-Policy algorithms learn the properties of
+the policy that is actually being applied.
+2. We further note that the “next-state” s
+0 = sn+1 of stage n need not coincide with the
+current state sn+1 of stage n + 1. Thus, we may skip some sample, or even choose sn at
+will at each stage. This is a common feature of off-policy schemes.
+3. A basic requirement in this algorithm is that all state-action pairs will be samples ”often
+enough”. To ensure that we often use a specific exploration algorithm or method. In fact,
+the speed of convergence may depend critically on the efficiency of exploration. We shall
+discuss this topic in detail further on.
+5
+4.3 Policy Evaluation: Monte-Carlo Methods
+Policy evaluation algorithms are intended to estimate the value functions V
+π or Qπ
+for
+a given policy π. Typically these are on-policy algorithms, and the considered policy is
+assumed to be stationary (or ”almost” stationary). Policy evaluation is typically used as
+the “critic” block of an actor-critic architecture.
+Direct Monte-Carlo methods are the most straight-forward, and are considered here mainly
+for comparison with the more elaborate ones. Monte-Carlo methods are based on the simple
+idea of averaging a number of random samples of a random quantity in order to estimate
+its average.
+Let π be a fixed stationary policy. Assume we wish to evaluate the value function V
+π
+,
+which is either the discounted return:
+V
+π
+(s) = E
+π
+(
+X∞
+t=0
+γ
+t
+r(st
+, at)|s0 = s)
+or the total return for an SSP (or episodial) problem:
+V
+π
+(s) = E
+π
+(
+X
+T
+t=0
+r(st
+, at)|s0 = s)
+where T is the (stochastic) termination time, or time of arrival to the terminal state.
+Consider first the episodial problem. Assume that we operate (or simulate) the system
+with the policy π, for which we want to evaluate V
+π
+. Multiple trials may be performed,
+starting from arbitrary initial conditions, and terminating at T (or truncated before).
+After visiting state s, say at time ts, we add-up the total cost until the target is reached:
+vˆ(s) = X
+T
+t=ts
+Rt
+.
+After k visits to s, we have a sequence of total-cost estimates:
+vˆ1(s), · · · , vˆk(s).
+We can now compute our estimate:
+Vˆ
+k(s) = 1
+k
+X
+k
+i=1
+vˆi(s).
+6
+By repeating these procedure for all states, we estimate V
+π
+(·).
+State counting options: Since we perform multiple trials and each state can be visited several
+times per trial, there are several options regarding the visits that will be counted:
+a. Compute Vˆ (s) only for initial states (s0 = s).
+b. Compute Vˆ (s) each time s is visited.
+c. Compute Vˆ (s) only on first visit of s at each trial.
+Method (b) gives the largest number of samples, but these may be correlated (hence, lead
+to non-zero bias for finite times). But in any case, Vˆ
+k(s) → V
+π
+(s) is guaranteed as k → ∞.
+Obviously, we still need to guarantee that each state is visited enough – this depends on
+the policy π and our choice of initial conditions for the different trials.
+Remarks:
+1. The explicit averaging of the ˆvk’s may be replaced by the iterative computation:
+Vˆ
+k(s) = Vˆ
+k−1(s) + αk
+h
+vˆk(s) − Vˆ
+k−1(s)
+i
+,
+with αk =
+1
+k
+. Other choices for αk are also common, e.g. αk =
+γ
+k
+, and αk = ² (non-decaying
+gain, suitable for non-stationary conditions).
+2. For discounted returns, the computation needs to be truncated at some finite time Ts,
+which can be chosen large enough to guarantee a small error:
+vˆ(s) = X
+Ts
+t=ts
+(γ)
+t−tsRt
+.
+7
+4.4 Policy Evaluation: Temporal Difference Methods
+a. The TD(0) Algorithm
+Consider the total-return (SSP) problem with γ = 1. Recall the fixed-policy Value Iteration
+procedure of Dynamic Programming:
+Vn+1(s) = E
+π
+(r(s, a) + Vn(s
+0
+)) = r(s, π(s)) +X
+s
+0
+p(s
+0
+|s, π(s))Vn(s
+0
+), s ∈ S
+or Vn+1 = r
+π + P
+πVn, which converges to V
+π
+.
+Assume now that r
+π and P
+π are not given. We wish to devise a “learning version” of the
+above policy iteration.
+Let us run or simulate the system with policy π. Suppose we start with some estimate Vˆ
+of V
+π
+. At time n, we observe sn, rn and sn+1. We note that [rn + Vˆ (sn+1)] is an unbiased
+estimate for the right-hand side of the value iteration equation, in the sense that
+E
+π
+(rn + Vˆ (sn+1)|sn) = r(sn, π(sn)) +X
+s
+0
+p(s
+0
+|sn, π(sn))Vn(s
+0
+)
+However, this is a noisy estimate, due to randomness in r and s
+0
+. We therefore use it to
+modify Vˆ only slightly, according to:
+Vˆ (sn) := (1 − αn)Vˆ (sn) + αn[rn + Vˆ (sn+1)]
+= Vˆ (sn) + αn[rn + Vˆ (sn+1) − Vˆ (sn)]
+Here αn is the gain of the algorithm. If we define now
+dn , rn + Vˆ (sn+1) − Vˆ (sn)
+we obtain the update rule:
+Vˆ (sn) := Vˆ (sn) + αndn
+dn is called the Temporal Difference. The last equation defines the TD(0) algorithm.
+8
+Note that Vˆ (sn) is updated on basis of Vˆ (sn+1), which is itself an estimate. Thus, TD
+is a “bootstrap” method: convergence of Vˆ at each states s is inter-dependent with other
+states.
+Convergence results for TD(0) (preview):
+1. If αn & 0 at suitable rate (αn ≈ 1/no. of visits to sn), and each state is visited i.o.,
+then Vˆ
+n → V
+π w.p. 1.
+2. If αn = α0 (a small positive constant) and each state is visited i.o., then Vˆ
+n will
+“eventually” be close to V
+π with high probability. That is, for every ² > 0 and δ > 0
+there exists α0 small enough so that
+limn→∞
+Prob(|Vˆ
+n − V
+π
+| > ²) ≤ δ .
+b. TD with `-step look-ahead
+TD(0) looks only one step in the “future” to update Vˆ (sn), based on rn and Vˆ (sn+1).
+Subsequent changes will not affect Vˆ (sn) until sn is visited again.
+Instead, we may look ` steps in the future, and replace dn by
+d
+(`)
+n , [
+X
+`−1
+m=0
+rn+m + Vˆ (sn+`)] − Vˆ (sn)
+=
+X
+`−1
+m=0
+dn+m
+where dn is the one-step temporal difference as before. The iteration now becomes
+Vˆ (sn) := Vˆ (sn) + αnd
+(`)
+n
+.
+This is a “middle-ground” between TD(0) and Monte-Carlo evaluation!
+9
+c. The TD(λ) Algorithm
+Another way to look further ahead is to consider all future Temporal Differences with a
+“fading memory” weighting:
+Vˆ (sn) := Vˆ (sn) + α(
+X∞
+m=0
+λ
+mdn+m) (1)
+where 0 ≤ λ ≤ 1. For λ = 0 we get TD(0); for λ = 1 we obtain the Monte-Carlo sample!
+Note that each run is terminated when the terminal state is reached, say at step T. We
+thus set dn ≡ 0 for n ≥ T.
+The convergence properties of TD(λ) are similar to TD(0). However, TD(λ) often converges
+faster than TD(0) or direct Monte-Carlo methods, provided that λ is properly chosen. This
+has been experimentally observed, especially when function approximation is used for the
+value function.
+Implementations of TD(λ):
+There are several ways to implement the relation in (1).
+1. Off-line implementation: Vˆ is updated using (1) at the end of each simulation run, based
+on the stored (st
+, dt) sequence from that run.
+2. Each dn is used as soon as becomes available, via the following backward update (also
+called “on-line implementation”):
+Vˆ (sn−m) := Vˆ (sn−m) + α · λ
+mdn , m = 0, . . . , n . (2)
+This requires only keeping track of the state sequence (st
+, t ≥ 0). Note that is some state
+s appears twice in that sequence, it is updated twice.
+3. Eligibility-trace implementation:
+Vˆ (s) := Vˆ (s) + αdnen(s), s ∈ S (3)
+where
+en(s) = Xn
+k=0
+λ
+n−k
+1{sk = s}
+10
+is called the eligibility trace for state s.
+The eligibility trace variables en(s) can also be computed recursively. Thus, set e0(s) = 0,
+and
+en(s) := λen−1(s) + 1{sn = s} =
+(
+λ · en−1(s) + 1 if s = sn
+λ · en−1(s) if s 6= sn
+(4)
+Equations (3) and (4) provide a fully recursive implementation of TD(λ).
+d. TD Algorithms for the Discounted Return Problem
+For γ-discounted returns, we obtain the following equations for the different TD algorithms:
+1. TD(0):
+Vˆ (sn) := (1 − α)Vˆ (sn) + α[rn + γVˆ (sn+1]
+= Vˆ (sn) + α · dn,
+with dn , rn + γV (sn+1) − V (sn).
+2. `-step look-ahead:
+Vˆ (sn) := (1 − α)Vˆ (sn) + α[rn + γrn+1 + · · · + γ
+`Vn+`
+]
+= Vˆ (sn) + α[dn + γdn+1 + · · · + γ
+`−1
+dn+`−1]
+3. TD(λ):
+Vˆ (sn) := Vˆ (sn) + α
+X∞
+k=0
+(γλ)
+k
+dn+k .
+The eligibility-trace implementation is:
+Vˆ (s) := Vˆ (s) + αdnen(s),
+en(s) := γλen−1(s) + 1{sn = s} .
+11
+e. Q-functions and their Evaluation
+For policy improvement, what we require is actually the Q-function Qπ
+(s, a), rather than
+V
+π
+(s). Indeed, recall the policy-improvement step of policy iteration, which defines the
+improved policy ˆπ via:
+πˆ(s) ∈ argmax{r(s, a) + γ
+X
+s
+0
+p(s
+0
+|s, a)V
+π
+(s)} ≡ argmax Q
+π
+(s, a).
+How can we estimate Qπ
+?
+1. Using Vˆ π
+: If we know the one-step model parameters r and p, we may estimate Vˆ π as
+above and compute
+Qˆπ
+(s, a)
+4
+= r(s, a) + γ
+Xp(s
+0
+|s, a)Vˆ π
+(s
+0
+).
+When the model is not known, this requires to estimate r and p on-line.
+2. Direct estimation of Qπ
+: This can be done the same methods as outlined for Vˆ π
+, namely
+Monte-Carlo or TD methods. We mention the following:
+The SARSA algorithm: This is the equivalent of of TD(0). At each stage we observe
+(sn, an, rn, sn+1, an+1), and update
+Q(sn, an) := Q(sn, an) + αn · dn
+dn = rn + γQ(sn+1, an+1) − Q(sn, an)
+Similarly, the SARSA(λ) algorithm uses
+Q(s, a) := Q(s, a) + αn(s, a) · dnen(s, a)
+en(s, a) := γλen−1(s, a) + 1{sn = 1, an = a} .
+Note that:
+– The estimated policy π must be the one used (“on-policy” scheme).
+– More variables are estimated in Q than in V .
+12
+4.5 Policy Improvement
+Having studied the “policy evaluation” block of the actor/critic scheme, we turn to the
+policy improvement part.
+Ideally, we wish to implement policy iteration through learning:
+(i) Using policy π, evaluate Qˆ ≈ Qπ
+. Wait for convergence.
+(ii) Compute ˆπ = argmax Qˆ (the “greedy policy” w.r.t. Qˆ).
+Problems:
+a. Convergence in (i) takes infinite time.
+b. Evaluation of Qˆ requires trying all actions – typically requires an exploration scheme
+which is richer than the current policy π.
+To solve (a), we may simply settle for a finite-time estimate of Qπ
+, and modify π every
+(sufficiently long) finite time interval. A more “smooth” option is to modify π slowly in
+the “direction” of the maximizing action. Common options include:
+(i) Gradual maximization: If a
+∗ maximizes Qˆ(s, a), where s is the state currently examined,
+then set
+(
+π(a
+∗
+|s) := π(a
+∗
+|s) + α · [1 − π(a
+∗
+|s)]
+π(a|s) := π(a|s) − α · π(a|s), a 6= a
+∗
+.
+Note that π is a randomized stationary policy, and indeed the above rule keeps π(·|s)
+as a probability vector.
+(ii) Increase probability of actions with high Q: Set
+π(a|s) = e
+β(s,a)
+P
+a
+0 e
+β(s,a)
+(a Boltzmann-type distribution), where β is updated as follows:
+β(s, a) := β(s, a) + α[Qˆ(s, a) − Qˆ(s, a0)].
+Here a0 is some arbitrary (but fixed) action.
+13
+(iii) “Pure” actor-critic: Same Boltzmann-type distribution is used, but now with
+β(s, a) := β(s, a) + α[r(s, a) + γVˆ (s
+0
+) − Vˆ (s)]
+for (s, a, s0
+) = (sn, an, sn+1). Note that this scheme uses directly Vˆ rather than Qˆ.
+However it is more noisy and harder to analyze than other options.
+To address problem (b) (exploration), the simplest approach is to superimpose some randomness
+over the policy in use. Simple local methods include:
+(i) ²-exploration: Use the nominal action an (e.g., an = argmaxa Q(sn, a)) with probability
+(1 − ²), and otherwise (with probability ²) choose another action at random.
+The value of ² can be reduced over time, thus shifting the emphasis from exploration
+to exploitation.
+(ii) Softmax: Actions at state s are chosen according to the probabilities
+π(a|s) = e
+Q(s,a)/θ
+P
+a
+e
+Q(s,a)/θ .
+θ is the “temperature” parameter, which may be reduced gradually.
+(iii) The above “gradual maximization” methods for policy improvement.
+These methods however may give slow convergence results, due to their local (state-bystate)
+nature.
+Another simple (and often effective) method for exploration relies on the principle of optimism
+in the face of uncertainty. For example, by initializing Qˆ to high (optimistic) values,
+we encourage greedy action selection to visit unexplored states. We will revisit those ideas
+later on in the course.
+Convergence analysis for actor-critic schemes is relatively hard. Existing results rely on a
+two time scale approach, where the rate of policy update is assumed much slower than the
+rate of value-function update.
+14
+4.6 Q-learning
+Q-learning is the most notable representative of value iteration based methods. Here the
+goal is to compute directly the optimal value function. These schemes are typically off-policy
+methdos – learning the optimal value function can take place under any policy (subject to
+exploration requirements).
+Recall the definition of the (optimal) Q-function:
+Q(s, a) , r(s, a) + γ
+X
+s
+0
+p(s
+0
+|s, a)V
+∗
+(s
+0
+).
+The optimality equation is then V
+∗
+(s) = maxa Q(s, a), s ∈ S, or in terms of Q only:
+Q(s, a) = r(s, a) + γ
+X
+s
+0
+p(s
+0
+|s, a) max
+a
+0
+Q(s
+0
+, a0
+), s ∈ S, a ∈ A .
+The value iteration algorithm is given by:
+Vn+1(s) = max
+a
+{r(s, a) + γ
+X
+s
+0
+p(s
+0
+|s, a)Vn(s
+0
+)} , s ∈ S
+with Vn → V
+∗
+. This can be reformulated as
+Qn+1(s, a) = r(s, a) + γ
+X
+s
+0
+p(s
+0
+|s, a) max
+a
+0
+Qn(s
+0
+, a0
+), (5)
+with Qn → Q.
+We can now define the on-line (learning) version of the Q-value iteration equation.
+The Q-learning algorithm:
+– initialize Qˆ.
+– At stage n: Observe (sn, an, rn, sn+1), and let
+Qˆ(sn, an) := (1 − αn)Qˆ(sn, an) + αn[rn + γ max
+a
+0
+Qˆ(sn+1, a0
+)]
+= Qˆ(sn, an) + αn[rn + γ max
+a
+0
+Qˆ(sn+1, a0
+) − Qˆ(sn, an)] .
+The algorithm is obviously very similar to the basic TD schemes for policy evaluation,
+except for the maximization operation.
+15
+Convergence: If all (s, a) pairs are visited i.o., and αn & 0 at appropriate rate, then
+Qˆ
+n → Q∗
+.
+Policy Selection:
+– Since learning of Q∗ does not depend on optimality of the policy used, we can focus
+on exploration during learning. However, if learning takes place while the system is
+in actual operation, we may still need to use a close-to-optimal policy, while using
+the standard exploration techniques (²-greedy, softmax, etc.).
+– When learning stops, we may choose a greedy policy:
+πˆ(s) = max
+a
+Qˆ(s, a).
+Performance: Q-learning is very convenient to understand and implement; however, convergence
+may be slower than actor-critic (TD(λ)) methods, especially if in the latter we
+only need to evaluate V and not Q.
+16
